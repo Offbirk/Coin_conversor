@@ -1,2 +1,2 @@
 # Coin_conversor
-Applicacion java que permite convertidor divisas de algunos paises y tambien convertir unidades de temperatura.
+Aplicación Java que permite convertir divisas de algunos países y también convertir unidades de temperatura.

@@ -1,8 +1,13 @@
+import org.json.JSONObject;
+
 import javax.swing.*;
 import java.awt.event.*;
-import java.io.ObjectInputStream.GetField;
-import java.text.DecimalFormat;
 import java.awt.Font;
+import java.io.IOException;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.Scanner;
+import java.lang.String;
 
 /***
  * 
@@ -11,12 +16,18 @@ import java.awt.Font;
  */
 
 public class Conversor1 extends JFrame implements ItemListener, ActionListener {
-	private JLabel label1;
-	private JComboBox<String> comboBox;
-	private JButton botonAceptar;
+    private JComboBox<String> comboBox;
 	private JLabel lblNewLabel;
 	private JTextField textField;
 	private JButton botonVerificar;
+	private JButton botonConsultar;
+	public static JSONObject rates;
+	private double USD;
+	private double EUR = 1;
+	private double GBP;
+	private double COP;
+	private double JPY;
+	private double KRW;
 
 	public Conversor1() {
 		/**
@@ -24,7 +35,7 @@ public class Conversor1 extends JFrame implements ItemListener, ActionListener {
 		 * @return El valor retornado es el producto de la conversion de valores estaticos
 		 */
 		getContentPane().setLayout(null);
-		label1 = new JLabel("Conversor de moneda");
+        JLabel label1 = new JLabel("Conversor de moneda");
 		label1.setFont(new Font("Tahoma", Font.BOLD, 20));
 		label1.setBounds(140, 20, 250, 20);
 		getContentPane().add(label1);
@@ -47,7 +58,7 @@ public class Conversor1 extends JFrame implements ItemListener, ActionListener {
 		opcionesDeMoneda();					
 		
 		botonVerificar();
-		botonAceptar();		
+		botonConsultar();
 	}		
 	
 	private void opcionesDeMoneda() {
@@ -61,7 +72,123 @@ public class Conversor1 extends JFrame implements ItemListener, ActionListener {
 		comboBox.setEnabled(false);
 		getContentPane().add(comboBox);		
 	}
-	
+
+	/* {
+		"success": true,
+		"timestamp": 1519296206,
+		"base": "USD",
+		"date": "2025-01-18",
+		"rates": {
+					"GBP": 0.72007,
+					"JPY": 107.346001,
+					"EUR": 0.813399,
+				 }
+		}
+	*/
+	private URL consultarAPI() {
+		URL url = null; //quitar la inicialización en null
+		try {
+			url = new URL("https://data.fixer.io/api/latest?access_key="+ System.getenv("API_KEY")+"&base=EUR&symbols=COP,USD,JPY,KRW,GBP");
+			System.out.println("URL: " + url);
+			// Abrir la conexión, enviarle el metodo de petición HTTP
+			HttpURLConnection con = (HttpURLConnection) url.openConnection();
+			con.setRequestMethod("GET");
+			con.connect();
+
+			//Verificar el estado de la respuesta de la API
+			int responseCode = con.getResponseCode();
+			if (responseCode != 200) {
+				throw new RuntimeException("Http response code" + responseCode);
+			} else {
+				JSONObject json = getJsonObject(url);
+				System.out.println("JSON:" + json);
+				// Se utiliza el metodo getString() para obtener el valor de la clave x, cuando no se está seguro se usa optString() en su lugar.
+				rates = json.optJSONObject("rates");
+				System.out.println("RATES: " + rates);
+
+				// Obtener las equivalencias de las monedas (USD, COP, JPY, KRW)
+				if(rates != null) {
+					USD = rates.optDouble("USD");
+					GBP = rates.optDouble("GBP");
+					COP = rates.optDouble("COP");
+					JPY = rates.optDouble("JPY");
+					KRW = rates.optDouble("KRW");
+				} else {
+					System.out.println("El valor del JSON rates no existen, retorna null en las monedas");
+				}
+			}
+		} catch (IOException e) {
+			System.err.println("Ocurrio un error: " + e.getMessage());
+		}
+		return url;
+	}
+
+	private static JSONObject getJsonObject(URL url) throws IOException {
+		StringBuilder response = new StringBuilder();
+		Scanner scanner = new Scanner(url.openStream());
+		while (scanner.hasNext()) {
+			response.append(scanner.nextLine());
+		}
+		scanner.close();
+
+		JSONObject json = new JSONObject(response.toString());
+		return json;
+	}
+
+	private void botonConsultar() {
+		botonConsultar = new JButton("consultar API");
+		botonConsultar.setBounds(158, 226, 180, 22);
+		getContentPane().add(botonConsultar);
+
+        botonConsultar.addActionListener(e -> {
+			String opcionSeleccionada = (String) comboBox.getSelectedItem();
+				if (opcionSeleccionada.equals("De Pesos a Dolar")) {
+					consultarAPI();
+					Convert(COP, USD);
+				} else if (opcionSeleccionada.equals("De Pesos a Euro")) {
+					consultarAPI();
+					Convert(COP, EUR);
+                }else if (opcionSeleccionada.equals("De Pesos a Libras")) {
+					consultarAPI();
+					Convert(COP, GBP);
+				} else if (opcionSeleccionada.equals("De Pesos a Yen")) {
+					consultarAPI();
+					Convert(COP, JPY);
+				} else if (opcionSeleccionada.equals("De Pesos a Won Coreano")) {
+					consultarAPI();
+					Convert(COP, KRW);
+				} else if (opcionSeleccionada.equals("De Dolar a Pesos")) {
+					consultarAPI();
+					Convert(USD, COP);
+				} else if (opcionSeleccionada.equals("De Euro a Pesos")) {
+					consultarAPI();
+					Convert(EUR, COP);
+				} else if (opcionSeleccionada.equals("De Libras a Pesos")) {
+					consultarAPI();
+					Convert(GBP, COP);
+				} else if (opcionSeleccionada.equals("De Yen a Pesos")) {
+					consultarAPI();
+					Convert(JPY, COP);
+				} else if (opcionSeleccionada.equals("De Won Coreano a Pesos")) {
+					consultarAPI();
+					Convert(KRW, COP);
+				}
+
+			boolean continuarOption = false;
+			while (!continuarOption) {
+				int continuar = JOptionPane.showConfirmDialog(null, "Quieres continuar", null, JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE);
+
+				if (continuar == 1 || continuar == 2) {
+					JOptionPane.showMessageDialog(null, "Programa finalizado");
+					System.exit(0);
+				}
+				textField.setText(null);
+				textField.requestFocus();
+				continuarOption = true;
+			}
+		});
+	};
+
 	public double getValor() {
 		/**
 		 * @param Este metodo permite obtener el valor registrado en el campo textField y convertirlo a un valor de tipo double
@@ -72,79 +199,36 @@ public class Conversor1 extends JFrame implements ItemListener, ActionListener {
 	}
 	
 	/**
-	 * @param Los metodos a continuacion realizan una conversion de un valor estatico obteniendo un valor ingresado en textField y ejecutando una 
-	 * operacion de conversion
+	 * @param "Los metodos a continuacion realizan una conversion de un valor estatico obteniendo un valor ingresado en textField y ejecutando una
+	 *             operacion de conversion"
 	 * @return A traves de un mensaje muestran los resultados de cada una de las conversiones
 	 */
-	
-	private void DePesosADolar() {		
+
+	private void Convert(double initialValue, double target) {
+		//valor inicial sea mayor que base y que base sea mayor que target = DIVIDIR ambas
+		//valor inicial sea menor que base y que base sea menor que target = MULTIPLICAR ambas
+		//valor inicial sea mayor que base y que base sea menor que target = 1°divido 2° multiplico
+		//valor inicial sea menor que base y que base sea mayor que target = 1° multiplicar 2° dividir
+		double base = 1;
+		double resultado;
 		double valor = getValor();
-		double dolar = 4051.22;
-		double conversion = valor/dolar;		
-		JOptionPane.showMessageDialog(null, "El valor ingresado corresponde a: $" + conversion + " USD");
-	}
-	
-	private void DePesosAEuro() {
-		double valor = getValor();
-		double euro = 4443.14;
-		double conversion = valor/euro;
-		JOptionPane.showMessageDialog(null, "El valor ingresado corresponde a: $" + conversion + " EUR");
-	}
-	
-	private void DePesosALibras() {
-		double valor = getValor();
-		double libras = 5166.52;
-		double conversion = valor/libras;
-		JOptionPane.showMessageDialog(null, "El valor ingresado corresponde a: $" + conversion + " LIB");
-	}
-	
-	private void DePesosAYen() {
-		double valor = getValor();
-		double yen = 28.28;
-		double conversion = valor/yen;
-		JOptionPane.showMessageDialog(null, "El valor ingresado corresponde a: $" + conversion + " YEN");
-	}
-	
-	private void DePesosAWonCoreano() {
-		double valor = getValor();
-		double wonCoreano = 3.07;
-		double conversion = valor/wonCoreano;
-		JOptionPane.showMessageDialog(null, "El valor ingresado corresponde a: $" + conversion + " WON");
-	}
-	
-	private void DeDolarAPesos() {
-		double valor = getValor();
-		double pesos = 4051.22;
-		double conversion = valor * pesos;
-		JOptionPane.showMessageDialog(null, "El valor ingresado corresponde a: $" + conversion + " COP");		
-	}
-	
-	private void DeEuroAPesos() {
-		double valor = getValor();
-		double pesos = 4443.14;
-		double conversion = valor * pesos;
-		JOptionPane.showMessageDialog(null, "El valor ingresado corresponde a: $" + conversion + " COP");
-	}
-	
-	private void DeLibrasAPesos() {
-		double valor = getValor();
-		double pesos = 5166.52;
-		double conversion = valor * pesos;
-		JOptionPane.showMessageDialog(null, "El valor ingresado corresponde a: $" + conversion + " COP");
-	}
-	
-	private void DeYenAPesos() {
-		double valor = getValor();
-		double pesos = 28.28;
-		double conversion = valor * pesos;
-		JOptionPane.showMessageDialog(null, "El valor ingresado corresponde a: $" + conversion + " COP");
-	}
-	
-	private void DeWonCoreanoAPesos() {
-		double valor = getValor();
-		double pesos = 3.07;
-		double conversion = valor * pesos;
-		JOptionPane.showMessageDialog(null, "El valor ingresado corresponde a: $" + conversion + " COP");
+		if(initialValue > base & base > target) {
+			resultado = (valor / initialValue)/ target;
+			System.out.println("Ambos son mayores:" + resultado);
+		} else if (initialValue < base & base < target) {
+			resultado = (valor * initialValue) * target;
+			System.out.println("Ambos son menores:" + resultado);
+		} else if(initialValue > base & base < target) {
+			resultado = (valor / initialValue) * target;
+			System.out.println("Valor inicial es mayor y la base es menor que target:" + resultado);
+		} else if (initialValue < base & base > target) {
+			resultado = (valor * initialValue) / target;
+			System.out.println("Valor inicial es menor y la base es mayor que target:" + resultado);
+		} else {
+			resultado = valor/initialValue;
+			System.out.println("La base es igual a 1:" + resultado);
+		}
+		JOptionPane.showMessageDialog(null, "El valor ingresado corresponde a: $" + String.format("%.2f", resultado));
 	}
 	
 	private void botonVerificar() {		
@@ -176,7 +260,7 @@ public class Conversor1 extends JFrame implements ItemListener, ActionListener {
 	                    }
 	                    valido = true;
 	                    comboBox.setEnabled(true);
-	                    botonAceptar.setEnabled(true);
+	                    botonConsultar.setEnabled(true);
 	                } catch (NumberFormatException ex) {
 	                    int choice = JOptionPane.showConfirmDialog(
 	                            null,
@@ -204,56 +288,6 @@ public class Conversor1 extends JFrame implements ItemListener, ActionListener {
 	        }
 	    });
 	}
-	
-	private void botonAceptar() {
-		botonAceptar = new JButton("Aceptar");
-		botonAceptar.setBounds(215, 206, 100, 30);
-		botonAceptar.setEnabled(false);
-		getContentPane().add(botonAceptar);
-		
-		botonAceptar.addActionListener(new ActionListener() {
-			/**
-			 * @param Con este evento se identifica que opcion fue elegida del listado de opciones y llama al metodo de conversion correspondiente
-			 */
-			public void actionPerformed(ActionEvent e) {
-				String opcionSeleccionada = (String) comboBox.getSelectedItem(); 
-				if (opcionSeleccionada.equals("De Pesos a Dolar")){
-					DePesosADolar();
-				} else if (opcionSeleccionada.equals("De Pesos a Euro")) {
-					DePesosAEuro(); 
-				} else if (opcionSeleccionada.equals("De Pesos a Libras")) {
-					DePesosALibras(); 
-				} else if (opcionSeleccionada.equals("De Pesos a Yen")) {
-					DePesosAYen(); 
-				} else if (opcionSeleccionada.equals("De Pesos a Won Coreano")) {
-					DePesosAWonCoreano(); 
-				} else if (opcionSeleccionada.equals("De Dolar a Pesos")) {
-					DeDolarAPesos(); 
-				} else if (opcionSeleccionada.equals("De Euro a Pesos")) {
-					DeEuroAPesos(); 
-				} else if (opcionSeleccionada.equals("De Libras a Pesos")) {
-					DeLibrasAPesos();
-				} else if (opcionSeleccionada.equals("De Yen a Pesos")) {
-					DeYenAPesos();
-				} else if (opcionSeleccionada.equals("De Won Coreano a Pesos")) {
-					DeWonCoreanoAPesos();
-				}	
-					
-			boolean continuarOption = false;
-			while (!continuarOption) {
-				int continuar = JOptionPane.showConfirmDialog(null, "Quieres continuar", null, JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE);
-				
-				if (continuar == 1 || continuar == 2) {
-					JOptionPane.showMessageDialog(null, "Programa finalizado");
-					System.exit(0);
-				}
-				textField.setText(null);
-				textField.requestFocus();
-				continuarOption = true;
-				}			
-			}
-		});					
-}		
 
 	@Override
 	public void itemStateChanged(ItemEvent e) {
